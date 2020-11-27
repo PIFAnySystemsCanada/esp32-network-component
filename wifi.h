@@ -9,6 +9,11 @@
 
 #pragma once
 
+// WIFI Monitor Thread
+#define THREAD_WIFI_NAME "wifi_connected"
+#define THREAD_WIFI_STACKSIZE configMINIMAL_STACK_SIZE * 4
+#define THREAD_WIFI_PRIORITY 4
+
 #ifdef __cplusplus
 extern "C" {
 #endif

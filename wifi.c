@@ -16,6 +16,8 @@
 #include "lwip/sys.h"
 #include "sdkconfig.h"
 
+#include "wifi.h"
+
 #if CONFIG_POWER_SAVE_MIN_MODEM
 #define DEFAULT_PS_MODE WIFI_PS_MIN_MODEM
 #elif CONFIG_POWER_SAVE_MAX_MODEM

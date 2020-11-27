@@ -29,3 +29,26 @@ idf.py menuconfig
 ```
 
 Browse to the WIFI Configuration section and answer the questions. Help is available to describe each item.
+
+## Using the Component
+
+### Initialization
+
+Use the following code in your app_main function:
+
+```
+    wifi_setup();
+    wifi_connect();
+```
+
+esp_event_loop_create_default is required for wifi. Be aware some other components may try to init the event loop leading to an error you can safely ignore.
+
+### WaitForConnect
+
+In most applications, a network connection is necessary to start processing. This component provides:
+
+```
+    wifi_waitforconnect();
+```
+
+This function will cause the current thread to wait until the WIFI code has assigned an IP number. This function will wait indefinitely if no connection is found. 

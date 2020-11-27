@@ -16,9 +16,6 @@
 #include "lwip/sys.h"
 #include "sdkconfig.h"
 
-#include "threads.h"
-#include "led.h"
-
 #if CONFIG_POWER_SAVE_MIN_MODEM
 #define DEFAULT_PS_MODE WIFI_PS_MIN_MODEM
 #elif CONFIG_POWER_SAVE_MAX_MODEM
@@ -221,6 +218,9 @@ void wifi_setup(void)
       ret = nvs_flash_init();
     }
     ESP_ERROR_CHECK(ret);
+    // nvs configured by WIFI
+    ESP_ERROR_CHECK(esp_netif_init());
+    ESP_ERROR_CHECK(esp_event_loop_create_default());    
 }
 
 void wifi_connect(void)

@@ -17,7 +17,7 @@ The repo is designed to be included in a ESP-IDF application as a component. To 
 
 ```bash
 cd components
-git submodule add --init git@github.com:mbuckaway/esp32-wifi-component.git wifi
+git submodule add git@github.com:mbuckaway/esp32-wifi-component.git wifi
 ```
 
 ### Configure WIFI the application

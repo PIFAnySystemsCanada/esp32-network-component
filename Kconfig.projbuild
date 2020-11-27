@@ -1,0 +1,31 @@
+menu "WIFI Configuration"
+
+    config ESP_WIFI_SSID
+        string "WiFi SSID"
+        help
+            SSID (network name) to connect to.
+
+    config ESP_WIFI_PASSWORD
+        string "WiFi Password"
+        help
+            WiFi password (WPA or WPA2) to use.
+
+    config ESP_WIFI_SSID2
+        string "Second WiFi SSID"
+        help
+            SSID (network name) to connect to.
+
+    config ESP_WIFI_PASSWORD2
+        string "Second WiFi Password2"
+        help
+            WiFi password (WPA or WPA2) to use.
+
+    config ESP_WIFI_RETRY_DELAY
+        int "Delay between retries when WIFI connection drops"
+        default 8
+        help
+            The amount of time in seconds between attempts to reconnect to the AP
+            when the WIFI connection drops. We do not assume the connection
+            will remain up 100% of the time. Setting this value too low will
+            hammer the WIFI too much. 8-10 seconds is plenty.
+endmenu

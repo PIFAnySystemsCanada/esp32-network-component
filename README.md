@@ -52,3 +52,12 @@ In most applications, a network connection is necessary to start processing. Thi
 ```
 
 This function will cause the current thread to wait until the WIFI code has assigned an IP number. This function will wait indefinitely if no connection is found. 
+
+Two functions can be defined:
+
+```
+#define LED_DISCONNECTED_FUNCTION functionname()
+#define LED_CONNECTED_FUNCTION functionname2()
+```
+
+These functions are empty by default, but can be defined to enable controlling LED's when WIFI connects and disconnection. If either are defined, the include "led.h" is included in the code to pull in these functions. Proper callbacks will be implemented in the future.

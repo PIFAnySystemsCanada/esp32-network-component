@@ -1,4 +1,4 @@
-# ESP32 WIFI component
+# ESP-IDF WIFI component
 
 ## What is it?
 

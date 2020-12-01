@@ -18,9 +18,39 @@
 extern "C" {
 #endif
 
+/**
+ * @brief Sets up the wifi API and must be called once and only once per application. Typically called
+ * in the app_main function and must be called before calling wifi_connect.
+ */
 void wifi_setup(void);
+
+/**
+ * @brief Setup up the WIFI api to connect to a station and starts the wifi monitoring thread. This must
+ * not be called more than once in an applicaton unless wifi_disable is called. No checks are made to 
+ * ensure proper call order.
+ */
 void wifi_connect(void);
+
+/**
+ * @brief Monitors the wifi queue and waits for the connection to an AP to be created. If already connected,
+ * the call just exits. This function can be used to ensure a connection to an AP and an IP number has been
+ * assigned.
+ */
 void wifi_waitforconnect(void);
+
+/**
+ * @brief Disables the wifi reconnect thread and causes if to exit when the wifi connnection drops.
+ * The function is intended to be called when the device is shutdown or wifi_discconnect is called
+ * when reconnection is not desired. wifi_connect must be called again to setup the wifi connection.
+ */
+void wifi_disable();
+
+/**
+ * @brief Wrapper around esp_wifi_disconnect() and causes the WIFI connection to drop. Used in conjunction
+ * with wifi_disable, it can stop wifi completely.
+ */
+void wifi_disconnect(void);
+
 
 #ifdef __cplusplus
 }

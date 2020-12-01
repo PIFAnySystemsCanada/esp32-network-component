@@ -42,6 +42,8 @@ static EventGroupHandle_t s_wifi_event_group;
 
 static const char *TAG = "WIFICTRL";
 
+static bool wifi_enabled = true;
+
 static wifi_config_t wifi_config_1 = {
         .sta = {
             .ssid = CONFIG_ESP_WIFI_SSID,
@@ -95,9 +97,19 @@ void wifi_waitforconnect(void)
     }
 }
 
+void wifi_disable()
+{
+    wifi_enabled = false;
+}
+
+void wifi_disconnect(void)
+{
+    esp_wifi_disconnect();
+}
+
 static void wifi_connected(void *pvParameter)
 {
-    while (1)
+    while (wifi_enabled)
     {
         // Sit and wait until something happens
         EventBits_t bits = xEventGroupWaitBits(s_wifi_event_group,
@@ -109,6 +121,11 @@ static void wifi_connected(void *pvParameter)
         // xEventGroupWaitBits() returns the bits before the call returned, hence we can test which event actually
         // happened.
         if (bits & WIFI_DISCONNECTED_BIT) {
+            if (!wifi_enabled)
+            {
+                ESP_LOGW(TAG, "Wifi has been disabled. Thread aborted.");
+                break;
+            }
             ESP_LOGI(TAG, "Disconnected from AP, retrying....");
             // Clean the disconnected bit so we don't hit this again unless 
             // we don't connect again.
@@ -135,7 +152,7 @@ static void wifi_connected(void *pvParameter)
         // Delay so we don't hammer the AP
         vTaskDelay((WIFI_LOOP_DELAY_MS * 1000) / portTICK_PERIOD_MS);
     }
-
+    vTaskDelete(NULL);
 }
 
 static void event_handler(void* arg, esp_event_base_t event_base,
@@ -205,8 +222,11 @@ void wifi_init_sta(void)
     ESP_ERROR_CHECK(esp_wifi_start());
 
 #ifdef CONFIG_PM_ENABLE
-    ESP_LOGI(TAG, "esp_wifi_set_ps().");
+    ESP_LOGI(TAG, "WIFI Power management configured");
     esp_wifi_set_ps(DEFAULT_PS_MODE);
+#else
+    ESP_LOGI(TAG, "WIFI Power management disabled");
+    esp_wifi_set_ps(WIFI_PS_NONE);
 #endif
 
     ESP_LOGI(TAG, "wifi_init_sta finished.");
@@ -231,6 +251,7 @@ void wifi_setup(void)
 
 void wifi_connect(void)
 {
+    wifi_enabled = true;
     ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
     wifi_init_sta();
 }

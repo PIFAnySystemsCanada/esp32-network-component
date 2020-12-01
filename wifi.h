@@ -51,6 +51,22 @@ void wifi_disable();
  */
 void wifi_disconnect(void);
 
+/**
+ * Sets the callback when the WIFI connection is made and an IP number is assigned. It is intended to change
+ * the status of LED's,  but can be used for anything. The callback should do processing quickly and return.
+ * If the callback takes to long, it will causes errors.
+ */
+
+void set_led_connected_callback(void (*callback)());
+
+/**
+ * Sets the callback when the WIFI connection is lost. It is intended to change
+ * the status of LED's,  but can be used for anything. The callback should do processing quickly and return.
+ * If the callback takes to long, it will causes errors.
+ */
+
+void set_led_disconnected_callback(void (*callback)());
+
 
 #ifdef __cplusplus
 }

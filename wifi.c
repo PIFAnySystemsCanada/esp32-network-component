@@ -40,6 +40,9 @@ static EventGroupHandle_t s_wifi_event_group;
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_DISCONNECTED_BIT      BIT1
 
+static void (*led_connected_callback)() = NULL;
+static void (*led_disconnected_callback)() = NULL;
+
 static const char *TAG = "WIFICTRL";
 
 static bool wifi_enabled = true;
@@ -107,6 +110,38 @@ void wifi_disconnect(void)
     esp_wifi_disconnect();
 }
 
+void set_led_connected_callback(void (*callback)())
+{
+    if (callback!=NULL)
+    {
+        led_connected_callback = callback;
+    }
+}
+
+void set_led_disconnected_callback(void (*callback)())
+{
+    if (callback!=NULL)
+    {
+        led_disconnected_callback = callback;
+    }
+}
+
+static void led_connected()
+{
+    if (led_connected_callback!=NULL)
+    {
+        led_connected_callback();
+    }
+}
+
+static void led_disconnected()
+{
+    if (led_disconnected_callback!=NULL)
+    {
+        led_disconnected_callback();
+    }
+}
+
 static void wifi_connected(void *pvParameter)
 {
     while (wifi_enabled)
@@ -130,9 +165,10 @@ static void wifi_connected(void *pvParameter)
             // Clean the disconnected bit so we don't hit this again unless 
             // we don't connect again.
             xEventGroupClearBits(s_wifi_event_group, WIFI_DISCONNECTED_BIT);
+            // Make sure the WIFI driver is offline
+            esp_wifi_disconnect();
 #ifdef CONFIG_ESP_WIFI_SSID2
             // Flip between our two hard coded AP's
-            esp_wifi_disconnect();
             if (wifi_config == &wifi_config_1)
             {
                 wifi_config = &wifi_config_2;
@@ -167,17 +203,13 @@ static void event_handler(void* arg, esp_event_base_t event_base,
     {
         xEventGroupClearBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
         xEventGroupSetBits(s_wifi_event_group, WIFI_DISCONNECTED_BIT);
-#ifdef LED_DISCONNECTED_FUNCTION
-        LED_DISCONNECTED_FUNCTION;
-#endif        
+        led_disconnected();
         ESP_LOGI(TAG,"Disconnected from the AP");
     }
     else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
         ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
         ESP_LOGI(TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
-#ifdef LED_CONNECTED_FUNCTION
-        LED_CONNECTED_FUNCTION;
-#endif        
+        led_connected();
         xEventGroupClearBits(s_wifi_event_group, WIFI_DISCONNECTED_BIT);
         xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
     }

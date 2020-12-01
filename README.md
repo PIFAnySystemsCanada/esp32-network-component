@@ -13,7 +13,7 @@ It supports the following features:
 
 ## Including the Component
 
-The repo is designed to be included in a ESP-IDF application as a component. To add it as a company, change to your component directory, and add it as a git submodule:
+The repo is designed to be included in a ESP-IDF application as a component. To add it as a component, change to your component directory, and add it as a git submodule:
 
 ```bash
 cd components
@@ -53,11 +53,11 @@ In most applications, a network connection is necessary to start processing. Thi
 
 This function will cause the current thread to wait until the WIFI code has assigned an IP number. This function will wait indefinitely if no connection is found. 
 
-Two functions can be defined:
+### LED Callbacks
+
+It is useful for a headless device to use status LEDs to indicate what is going on. Some ESP32 boards have built in LEDs, but adding GPIOs for external LED's is easy. The WIFI code features two callbacks. While they are intended to support changing status LEDs, they can be used for anything. However, they should not be used to check for a connection as the wifi_wififorconnected() is intended for this feature and uses a queue to check WIFI status.
 
 ```
-#define LED_DISCONNECTED_FUNCTION functionname()
-#define LED_CONNECTED_FUNCTION functionname2()
+set_led_connected_callback((void *callback)())
+set_led_disconnected_callback((void *callback)())
 ```
-
-These functions are empty by default, but can be defined to enable controlling LED's when WIFI connects and disconnection. If either are defined, the include "led.h" is included in the code to pull in these functions. Proper callbacks will be implemented in the future.

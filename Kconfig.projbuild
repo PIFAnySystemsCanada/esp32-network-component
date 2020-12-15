@@ -21,11 +21,23 @@ menu "WIFI Configuration"
             WiFi password (WPA or WPA2) to use.
 
     config ESP_WIFI_RETRY_DELAY
-        int "Delay between retries when WIFI connection drops"
+        int "Delay between WIFI connect retry attempts"
         default 8
         help
-            The amount of time in seconds between attempts to reconnect to the AP
-            when the WIFI connection drops. We do not assume the connection
-            will remain up 100% of the time. Setting this value too low will
-            hammer the WIFI too much. 8-10 seconds is plenty.
+            When WIFI disconnects, this is the number of seconds to wait until another retry attempt is made. This is set so not
+            to hammer the WIFI routers.
+            
+    config ESP_WIFI_REBOOT_ENABLED
+        bool "Enable Reboot on reconnect count"
+        default 1
+
+    config ESP_WIFI_REBOOT_COUNT
+        int "Number of unsuccessful retries to connect before restarting the device"
+        depends on ESP_WIFI_REBOOT_ENABLED
+        default 100
+        help
+            Sometimes, the device gets stuck and will never reconnect. This is the number
+            of retry attempts before the device is just rebooted.
+
+
 endmenu

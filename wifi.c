@@ -47,6 +47,10 @@ static const char *TAG = "WIFICTRL";
 
 static bool wifi_enabled = true;
 
+#ifdef CONFIG_ESP_WIFI_REBOOT_ENABLED
+static uint16_t retrycount = 0;
+#endif
+
 static wifi_config_t wifi_config_1 = {
         .sta = {
             .ssid = CONFIG_ESP_WIFI_SSID,
@@ -167,6 +171,15 @@ static void wifi_connected(void *pvParameter)
             xEventGroupClearBits(s_wifi_event_group, WIFI_DISCONNECTED_BIT);
             // Make sure the WIFI driver is offline
             esp_wifi_disconnect();
+#ifdef CONFIG_ESP_WIFI_REBOOT_ENABLED
+            retrycount++;
+            if (retrycount>CONFIG_ESP_WIFI_REBOOT_COUNT)
+            {
+                ESP_LOGE(TAG, "Retry count exceeded...rebooting...");
+                esp_restart();
+            }
+#endif
+
 #ifdef CONFIG_ESP_WIFI_SSID2
             // Flip between our two hard coded AP's
             if (wifi_config == &wifi_config_1)

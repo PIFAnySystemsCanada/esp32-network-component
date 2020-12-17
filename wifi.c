@@ -55,11 +55,14 @@ static wifi_config_t wifi_config_1 = {
         .sta = {
             .ssid = CONFIG_ESP_WIFI_SSID,
             .password = CONFIG_ESP_WIFI_PASSWORD,
-            /* Setting a password implies station will connect to all security modes including WEP/WPA.
-             * However these modes are deprecated and not advisable to be used. Incase your Access point
-             * doesn't support WPA2, these mode can be enabled by commenting below line */
-	     .threshold.authmode = WIFI_AUTH_WPA2_PSK,
-
+            // authmode sets the minimum required auth mode in order to connect.
+            // If this is configured for an auth mode that the AP does not support, it will not
+            // connect. In fact, the WIFI driver will not even try to connect. Set this to the minimum
+            // required mode. WIFI_AUTH_WPA_PSK is probably the best one.
+    	    .threshold.authmode = WIFI_AUTH_WPA_PSK,
+            .scan_method = WIFI_ALL_CHANNEL_SCAN,
+            .sort_method = WIFI_CONNECT_AP_BY_SIGNAL,
+            // We can do Protected Management Frames, but will connect to any AP even one that doesn't support PMF.
             .pmf_cfg = {
                 .capable = true,
                 .required = false
@@ -67,16 +70,14 @@ static wifi_config_t wifi_config_1 = {
         },
     };
 
-#ifdef CONFIG_ESP_WIFI_SSID2
+#ifdef CONFIG_ESP_WIFI_SSID2_ENABLED
 static wifi_config_t wifi_config_2 = {
         .sta = {
             .ssid = CONFIG_ESP_WIFI_SSID2,
             .password = CONFIG_ESP_WIFI_PASSWORD2,
-            /* Setting a password implies station will connect to all security modes including WEP/WPA.
-             * However these modes are deprecated and not advisable to be used. Incase your Access point
-             * doesn't support WPA2, these mode can be enabled by commenting below line */
-	     .threshold.authmode = WIFI_AUTH_WPA2_PSK,
-
+            .threshold.authmode = WIFI_AUTH_WPA_PSK,
+            .scan_method = WIFI_ALL_CHANNEL_SCAN,
+            .sort_method = WIFI_CONNECT_AP_BY_SIGNAL,
             .pmf_cfg = {
                 .capable = true,
                 .required = false
@@ -165,7 +166,7 @@ static void wifi_connected(void *pvParameter)
                 ESP_LOGW(TAG, "Wifi has been disabled. Thread aborted.");
                 break;
             }
-            ESP_LOGI(TAG, "Disconnected from AP, retrying....");
+            ESP_LOGI(TAG, "Disconnected from %s, retrying....", wifi_config->sta.ssid);
             // Clean the disconnected bit so we don't hit this again unless 
             // we don't connect again.
             xEventGroupClearBits(s_wifi_event_group, WIFI_DISCONNECTED_BIT);
@@ -180,7 +181,7 @@ static void wifi_connected(void *pvParameter)
             }
 #endif
 
-#ifdef CONFIG_ESP_WIFI_SSID2
+#ifdef CONFIG_ESP_WIFI_SSID2_ENABLED
             // Flip between our two hard coded AP's
             if (wifi_config == &wifi_config_1)
             {
@@ -194,6 +195,7 @@ static void wifi_connected(void *pvParameter)
             }
             ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, wifi_config) );
 #endif
+            ESP_LOGI(TAG, "Connecting to %s...", wifi_config->sta.ssid);
             esp_wifi_connect();
         } else {
             ESP_LOGE(TAG, "UNEXPECTED EVENT");
@@ -209,7 +211,7 @@ static void event_handler(void* arg, esp_event_base_t event_base,
 {
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) 
     {
-        ESP_LOGI(TAG,"Attempting to connect to the AP");
+        ESP_LOGI(TAG,"Attempting to connect to the %s", wifi_config->sta.ssid);
         esp_wifi_connect();
     }
     else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED)
@@ -217,11 +219,11 @@ static void event_handler(void* arg, esp_event_base_t event_base,
         xEventGroupClearBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
         xEventGroupSetBits(s_wifi_event_group, WIFI_DISCONNECTED_BIT);
         led_disconnected();
-        ESP_LOGI(TAG,"Disconnected from the AP");
+        ESP_LOGI(TAG,"Disconnected from the %s", wifi_config->sta.ssid);
     }
     else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
         ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
-        ESP_LOGI(TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
+        ESP_LOGI(TAG, "IP number received:" IPSTR, IP2STR(&event->ip_info.ip));
         led_connected();
         xEventGroupClearBits(s_wifi_event_group, WIFI_DISCONNECTED_BIT);
         xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
@@ -230,12 +232,10 @@ static void event_handler(void* arg, esp_event_base_t event_base,
 
 void wifi_init_sta(void)
 {
+    ESP_LOGI(TAG, "wifi_init_sta started");
     s_wifi_event_group = xEventGroupCreate();
 
     ESP_ERROR_CHECK(esp_netif_init());
-
-    // Event loop is created in app_main
-    //ESP_ERROR_CHECK(esp_event_loop_create_default());
     esp_netif_create_default_wifi_sta();
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
@@ -282,6 +282,7 @@ void wifi_init_sta(void)
 
 void wifi_setup(void)
 {
+    ESP_LOGI(TAG, "wifi_setup started.");
     //Initialize NVS
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
@@ -289,9 +290,10 @@ void wifi_setup(void)
       ret = nvs_flash_init();
     }
     ESP_ERROR_CHECK(ret);
-    // nvs configured by WIFI
+    // Setup networking and the event loop
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());    
+    ESP_LOGI(TAG, "wifi_setup finished.");
 }
 
 void wifi_connect(void)

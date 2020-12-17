@@ -10,12 +10,19 @@ menu "WIFI Configuration"
         help
             WiFi password (WPA or WPA2) to use.
 
+    config ESP_WIFI_SSID2_ENABLED
+        bool "Enable backup/second SSID"
+        help
+            Enable a second SSID to provide a backup or a second SSID for testing
+
     config ESP_WIFI_SSID2
+        depends on ESP_WIFI_SSID2_ENABLED
         string "Second WiFi SSID"
         help
             SSID (network name) to connect to.
 
     config ESP_WIFI_PASSWORD2
+        depends on ESP_WIFI_SSID2_ENABLED
         string "Second WiFi Password2"
         help
             WiFi password (WPA or WPA2) to use.

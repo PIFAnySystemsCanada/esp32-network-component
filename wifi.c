@@ -224,9 +224,17 @@ static void event_handler(void* arg, esp_event_base_t event_base,
     else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
         ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
         ESP_LOGI(TAG, "IP number received:" IPSTR, IP2STR(&event->ip_info.ip));
-        led_connected();
-        xEventGroupClearBits(s_wifi_event_group, WIFI_DISCONNECTED_BIT);
-        xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
+        // Check if the IP number if valid before firing events
+        if (esp_ip4_addr1_16(&event->ip_info.ip)==169)
+        {
+            ESP_LOGW(TAG, "Got IP, but local one - not firing events");
+        }
+        else
+        {
+            led_connected();
+            xEventGroupClearBits(s_wifi_event_group, WIFI_DISCONNECTED_BIT);
+            xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
+        }
     }
 }
 

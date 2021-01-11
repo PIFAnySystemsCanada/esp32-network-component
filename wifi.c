@@ -291,6 +291,10 @@ void wifi_init_sta(void)
 void wifi_setup(void)
 {
     ESP_LOGI(TAG, "wifi_setup started.");
+    if (sizeof(CONFIG_ESP_WIFI_SSID) == 0)
+    {
+        ESP_LOGE(TAG, "CONFIG_ESP_WIFI_SSID macro has a zero length! WIFI will not work.");
+    }
     //Initialize NVS
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {

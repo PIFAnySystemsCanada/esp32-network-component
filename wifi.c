@@ -18,6 +18,8 @@
 
 #include "wifi.h"
 
+#if CONFIG_ESP_WIFI_ENABLED
+
 #if CONFIG_POWER_SAVE_MIN_MODEM
 #define DEFAULT_PS_MODE WIFI_PS_MIN_MODEM
 #elif CONFIG_POWER_SAVE_MAX_MODEM
@@ -115,7 +117,7 @@ void wifi_disconnect(void)
     esp_wifi_disconnect();
 }
 
-void set_led_connected_callback(void (*callback)())
+void set_wifi_led_connected_callback(void (*callback)())
 {
     if (callback!=NULL)
     {
@@ -123,7 +125,7 @@ void set_led_connected_callback(void (*callback)())
     }
 }
 
-void set_led_disconnected_callback(void (*callback)())
+void set_wifi_led_disconnected_callback(void (*callback)())
 {
     if (callback!=NULL)
     {
@@ -222,8 +224,15 @@ static void event_handler(void* arg, esp_event_base_t event_base,
         ESP_LOGI(TAG,"Disconnected from the %s", wifi_config->sta.ssid);
     }
     else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
-        ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
-        ESP_LOGI(TAG, "IP number received:" IPSTR, IP2STR(&event->ip_info.ip));
+        ip_event_got_ip_t *event = (ip_event_got_ip_t *) event_data;
+        const esp_netif_ip_info_t *ip_info = &event->ip_info;
+        ESP_LOGI(TAG, "WIFI Got IP Address");
+        ESP_LOGI(TAG, "~~~~~~~~~~~");
+        ESP_LOGI(TAG, "WIFIIP:" IPSTR, IP2STR(&ip_info->ip));
+        ESP_LOGI(TAG, "WIFIMASK:" IPSTR, IP2STR(&ip_info->netmask));
+        ESP_LOGI(TAG, "WIFIGW:" IPSTR, IP2STR(&ip_info->gw));
+        ESP_LOGI(TAG, "~~~~~~~~~~~");
+
         // Check if the IP number if valid before firing events
         if (esp_ip4_addr1_16(&event->ip_info.ip)==169)
         {
@@ -302,9 +311,6 @@ void wifi_setup(void)
       ret = nvs_flash_init();
     }
     ESP_ERROR_CHECK(ret);
-    // Setup networking and the event loop
-    ESP_ERROR_CHECK(esp_netif_init());
-    ESP_ERROR_CHECK(esp_event_loop_create_default());    
     ESP_LOGI(TAG, "wifi_setup finished.");
 }
 
@@ -314,3 +320,5 @@ void wifi_connect(void)
     ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
     wifi_init_sta();
 }
+
+#endif

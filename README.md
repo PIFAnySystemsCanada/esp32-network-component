@@ -1,15 +1,25 @@
-# ESP-IDF WIFI component
+# ESP-IDF Network component
 
 ## What is it?
 
-This is a component for the ESP-IDF 4.1 or better.  It is intended for IOT situations were devices are tested in a lab first, and then deployed to the field. The module is designed to work where the WIFI connection is unstable.
+This is a component for the ESP-IDF 4.1 or better.  It is intended for IOT situations were devices are tested in a lab first, and then deployed to the field. This module provides both
+ethernet and wifi functionality. The module is designed to work where the WIFI connection is unstable.
 
-It supports the following features:
+The WIFI driver supports the following features:
 
 * support for two SSID's (one for development, one for field)
 * retry on connection failure or connection drop - expects the WIFI connection to be flakey.
 * able to check if the WIFI connection has been established and working
 * able to wait until the WIFI connection has been established
+* support for two status LED's depending on if the WIFI is connected, dropped, reconnecting, etc
+
+The ethernet driver supports the following features:
+
+* able to check if the ethernet connection has been established and working
+* able to wait until the ethernet connection has been established (waits for an IP number)
+* support for two status LED's depending on if the Ethernet is connected and has an IP number
+
+The WIFI and Ethernet drivers are based on the samples provided in the ESP-IDF, and some code added to handle restarting a WIFI connection and waiting for an IP number to be assigned.
 
 ## Including the Component
 
@@ -20,7 +30,7 @@ cd components
 git submodule add git@github.com:mbuckaway/esp32-wifi-component.git wifi
 ```
 
-### Configure WIFI the application
+### Configure Network the application
 
 Start the command below to setup configuration:
 
@@ -28,7 +38,39 @@ Start the command below to setup configuration:
 idf.py menuconfig
 ```
 
-Browse to the WIFI Configuration section and answer the questions. Help is available to describe each item.
+Browse to the WIFI Configuration section, enable WIFI and answer the questions. Help is available to describe each item. Simularly, for Ethernet support, 
+enable Ethernet and answer the questions.
+
+## Using the LILYGO T-Internet-POE board
+
+The [LILYGO T-Internet-POE](https://www.aliexpress.com/item/4001122992446.html) board is a cheaper alternative to the Espressif ethernet board. For about $25, it has all the hardware to support ethernet connections with POE for power.
+
+When configuring the ethernet driver in this module, select a chip type of LAN8720. The pin assignment defaults are fine but the PHY Address MUST be 0. The config should be as follows:
+
+```
+[*] Ethernet Enabled
+        Ethernet Type (Internal EMAC)  --->
+        Ethernet PHY Device (LAN8720)  --->
+(23)    SMI MDC GPIO number
+(18)    SMI MDIO GPIO number
+(5)     PHY Reset GPIO number
+(0)     PHY Address
+```
+
+Setting PHY Address to another other than 0 will cause the LAN8720 to fail on power up.
+
+There is two options deep in the config however that if missed will cause the ethernet chip to fail to reset on start. The init of the ethernet driver (ethernet_driver_install call) will just timeout.
+
+In the idf menuconfig:
+
+* go into Component Config->Ethernet
+* select "Support ESP32 internal EMAC controller"
+* under "RMII clock mode", select "Output RMII clock from internal".
+* A new option will appear: "RMII clock GPIO number". Make sure the GPIO number is 17 which is usually the default.
+* Back up to the top to Component Config->ESP NETIF Adapter
+* Set "Enable backward compatible tcpip_adapter interface" to Y or on
+
+Missing this setting will not allow the LAN8720 chip to start.
 
 ## Using the Component
 

@@ -9,6 +9,8 @@
 
 #pragma once
 
+#if CONFIG_ESP_WIFI_ENABLED
+
 // WIFI Monitor Thread
 #define THREAD_WIFI_NAME "wifi_connected"
 #define THREAD_WIFI_STACKSIZE configMINIMAL_STACK_SIZE * 4
@@ -57,7 +59,7 @@ void wifi_disconnect(void);
  * If the callback takes to long, it will causes errors.
  */
 
-void set_led_connected_callback(void (*callback)());
+void set_wifi_led_connected_callback(void (*callback)());
 
 /**
  * Sets the callback when the WIFI connection is lost. It is intended to change
@@ -65,9 +67,11 @@ void set_led_connected_callback(void (*callback)());
  * If the callback takes to long, it will causes errors.
  */
 
-void set_led_disconnected_callback(void (*callback)());
+void set_wifi_led_disconnected_callback(void (*callback)());
 
 
 #ifdef __cplusplus
 }
+#endif
+
 #endif

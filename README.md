@@ -2,16 +2,19 @@
 
 ## What is it?
 
-This is a component for the ESP-IDF 4.1 or better.  It is intended for IOT situations were devices are tested in a lab first, and then deployed to the field. This module provides both
-ethernet and wifi functionality. The module is designed to work where the WIFI connection is unstable.
+This is a component for the ESP-IDF 4.4 or better.  It is intended for IOT situations were devices are tested in a lab first, and then deployed to the field. This module provides both ethernet and wifi functionality. The module is designed to work where the WIFI connection is unstable. The driver set supports setting the WIFI parameters in the field with the Espressif BluFi app saving the need to hard code them at build time. The option to hard code them is still available.
 
 The WIFI driver supports the following features:
 
-* support for two SSID's (one for development, one for field)
+* Automatic configuation via the Espressif BluFi protocol and BluFi app (only the Bluedriod stack is supported)
+* Manual configuration support for two SSID's (one for development, one for field)
 * retry on connection failure or connection drop - expects the WIFI connection to be flakey.
 * able to check if the WIFI connection has been established and working
 * able to wait until the WIFI connection has been established
 * support for two status LED's depending on if the WIFI is connected, dropped, reconnecting, etc
+
+For the BluFi protocol, get the apps: [Android version](https://github.com/EspressifApp/EspBlufi) and [iOS version](https://itunes.apple.com/cn/app/espblufi/id1450614082?mt=8)
+BluFi protocol info is here: [BluFi protocol](https://docs.espressif.com/projects/esp-idf/en/latest/api-guides/blufi.html?highlight=blufi#the-frame-formats-defined-in-blufi)
 
 The ethernet driver supports the following features:
 
@@ -27,7 +30,7 @@ The repo is designed to be included in a ESP-IDF application as a component. To 
 
 ```bash
 cd components
-git submodule add git@github.com:mbuckaway/esp32-wifi-component.git wifi
+git submodule add git@github.com:PIFAnySystemsCanada/esp32-network-component.git network
 ```
 
 ### Configure Network the application
@@ -38,8 +41,10 @@ Start the command below to setup configuration:
 idf.py menuconfig
 ```
 
-Browse to the WIFI Configuration section, enable WIFI and answer the questions. Help is available to describe each item. Simularly, for Ethernet support, 
+Browse to the WIFI Configuration section, enable WIFI and answer the questions. Help is available to describe each item. Simularly, for Ethernet support,
 enable Ethernet and answer the questions.
+
+The WIFI section supports BluFi. This is an ESP32 WIFI configuration protocol used to setup the WIFI connection.
 
 ## Using the LILYGO T-Internet-POE board
 
@@ -79,18 +84,18 @@ Missing this setting will not allow the LAN8720 chip to start.
 Use the following code in your app_main function:
 
 ```
-    wifi_setup();
-    wifi_connect();
+    network_setup();
+    network_connect();
 ```
 
-esp_event_loop_create_default is required for wifi and is run from wifi_setup. Be aware some other components may try to init the event loop leading to an error you can safely ignore.
+esp_event_loop_create_default is required for wifi and is run from network_setup. Be aware some other components may try to init the event loop leading to an error you can safely ignore.
 
 ### WaitForConnect
 
 In most applications, a network connection is necessary to start processing. This component provides:
 
 ```
-    wifi_waitforconnect();
+    network_waitforconnect();
 ```
 
 This function will cause the current thread to wait until the WIFI code has assigned an IP number. This function will wait indefinitely if no connection is found. 

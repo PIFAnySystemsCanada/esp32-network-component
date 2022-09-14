@@ -1,24 +1,52 @@
 menu "WIFI Configuration"
-
     config ESP_WIFI_ENABLED
-        bool "WIFI Enabled"
+        bool "Wifi Enabled"
         help
-            Selected if WIFI is to be enabled or not. WIFI options are ignored if this option 
+            Selected if Wifi is to be enabled or not. Wifi options are ignored if this option 
             is not enabled.
 
     if ESP_WIFI_ENABLED
+
+        choice ESP_USE_WIFI
+            prompt "Wifi Type"
+            default ESP_BLUFI_ENABLED
+            help
+                Select which kind of Wifi configuration will be used
+
+            config ESP_BLUFI_ENABLED
+                bool "Use BluFi for WIFI config"
+                help
+                    Use the Espressif BluFi app to configure WIFI parameters
+    
+            config ESP_MANUAL_WIFI_ENABLED
+                bool "Use manual config for WIFI"
+                help
+                    Use the compiled in parameters to configure WIFI
+        endchoice
+
+        if ESP_BLUFI_ENABLED
+            config BT_ENABLED
+                bool "Enable Bluetooth (REQUIRED FOR BLUFI)"
+                default 1
+                help
+                    Enable Bluetooth in the build. Required for BluFi to work.
+        endif
+
         config ESP_WIFI_SSID
+            depends on ESP_MANUAL_WIFI_ENABLED
             string "WiFi SSID"
             help
                 SSID (network name) to connect to.
 
         config ESP_WIFI_PASSWORD
+            depends on ESP_MANUAL_WIFI_ENABLED
             string "WiFi Password"
             help
                 WiFi password (WPA or WPA2) to use.
 
         config ESP_WIFI_SSID2_ENABLED
             bool "Enable backup/second SSID"
+            depends on ESP_MANUAL_WIFI_ENABLED
             help
                 Enable a second SSID to provide a backup or a second SSID for testing
 
@@ -48,7 +76,7 @@ menu "WIFI Configuration"
         config ESP_WIFI_REBOOT_COUNT
             int "Number of unsuccessful retries to connect before restarting the device"
             depends on ESP_WIFI_REBOOT_ENABLED
-            default 100
+            default 25
             help
                 Sometimes, the device gets stuck and will never reconnect. This is the number
                 of retry attempts before the device is just rebooted.

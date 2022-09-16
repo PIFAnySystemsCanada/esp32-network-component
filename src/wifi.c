@@ -402,12 +402,15 @@ void wifi_init_sta(void)
     ESP_ERROR_CHECK(esp_wifi_set_country(&wifi_country));
     ESP_ERROR_CHECK(esp_wifi_start());
 
+#ifndef CONFIG_ESP_BLUFI_ENABLED
+// WIFI Power management WIFI_PS_NONE not available when BLUFI is in use
 #ifdef CONFIG_PM_ENABLE
     ESP_LOGI(TAG, "WIFI Power management configured");
     esp_wifi_set_ps(DEFAULT_PS_MODE);
 #else
     ESP_LOGI(TAG, "WIFI Power management disabled");
     esp_wifi_set_ps(WIFI_PS_NONE);
+#endif
 #endif
 
     ESP_LOGI(TAG, "wifi_init_sta finished.");

@@ -30,6 +30,12 @@ menu "WIFI Configuration"
                 default 1
                 help
                     Enable Bluetooth in the build. Required for BluFi to work.
+            config BT_DEVICE_NAME
+                string "Bluetooth Device Name"
+                default "ESP32GarageDoor"
+                help
+                    Name of the Bluetooth Device to appear in the BluFi app. Defaults to BLUFI_DEVICE, but this changes
+                    it to something more reasonable.
         endif
 
         config ESP_WIFI_SSID

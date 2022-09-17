@@ -54,6 +54,7 @@ static void (*led_connected_callback)() = NULL;
 static void (*led_disconnected_callback)() = NULL;
 
 static const char *TAG = "WIFICTRL";
+static const char *RESETCMD = "reset";
 
 static bool wifi_enabled = true;
 
@@ -482,37 +483,78 @@ void wifi_connect(void)
 }
 
 #ifdef CONFIG_ESP_BLUFI_ENABLED
+
+#ifdef CONFIG_BT_DEVICE_NAME
+// Unfortunately, the Espressif BluFi code hard codes the Bluetooth name for the device into the
+// BluFi library, once advertising starts, one can't change the name. So, we copy the init code here
+// to allow us to set the name outselves and then start advertising
+// Copied directly from $IDFROOT/components/bt/common/btc/profile/esp/blufi/bluedroid_host/esp_blufi.c
+// References to the structure below are here:
+// https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/bluetooth/esp_gap_ble.html#_CPPv418esp_ble_adv_data_t
+static uint8_t blufi_service_uuid128[32] = {
+    /* LSB <--------------------------------------------------------------------------------> MSB */
+    //first uuid, 16bit, [12],[13] is the value
+    0xfb, 0x34, 0x9b, 0x5f, 0x80, 0x00, 0x00, 0x80, 0x00, 0x10, 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00,
+};
+
+static esp_ble_adv_data_t blufi_adv_data = {
+    .set_scan_rsp = false,
+    .include_name = true,
+    .include_txpower = true,
+    .min_interval = 0x0006, //slave connection min interval, Time = min_interval * 1.25 msec
+    .max_interval = 0x0010, //slave connection max interval, Time = max_interval * 1.25 msec
+    .appearance = 0x00,
+    .manufacturer_len = 0,
+    .p_manufacturer_data =  NULL,
+    .service_data_len = 0,
+    .p_service_data = NULL,
+    .service_uuid_len = 16,
+    .p_service_uuid = blufi_service_uuid128,
+    .flag = 0x6,
+};
+
+#endif
+
 static void blufi_event_callback(esp_blufi_cb_event_t event, esp_blufi_cb_param_t *param)
 {
     /* actually, should post to blufi_task handle the procedure,
      * now, as a example, we do it more simply */
     switch (event) {
     case ESP_BLUFI_EVENT_INIT_FINISH:
-        ESP_LOGI(BLUFI_TAG, "BLUFI init finish\n");
+        ESP_LOGI(BLUFI_TAG, "BLUFI init finish");
 
+#ifdef CONFIG_BT_DEVICE_NAME
+        // Overwrite the BT name set in esp_blufi_adv_start
+        ESP_LOGI(BLUFI_TAG, "Bluetooth device name set to %s", CONFIG_BT_DEVICE_NAME);
+        // esp_blufi_adv_start does these two lines in esp_blufi.c
+        esp_ble_gap_set_device_name(CONFIG_BT_DEVICE_NAME);
+        esp_ble_gap_config_adv_data(&blufi_adv_data);
+#else
+        // If the name if not defined, use the default init code and name
         esp_blufi_adv_start();
+#endif        
         break;
     case ESP_BLUFI_EVENT_DEINIT_FINISH:
-        ESP_LOGI(BLUFI_TAG, "BLUFI deinit finish\n");
+        ESP_LOGI(BLUFI_TAG, "BLUFI deinit finish");
         break;
     case ESP_BLUFI_EVENT_BLE_CONNECT:
-        ESP_LOGI(BLUFI_TAG, "BLUFI ble connect\n");
+        ESP_LOGI(BLUFI_TAG, "BLUFI ble connect");
         ble_is_connected = true;
         esp_blufi_adv_stop();
         blufi_security_init();
         break;
     case ESP_BLUFI_EVENT_BLE_DISCONNECT:
-        ESP_LOGI(BLUFI_TAG, "BLUFI ble disconnect\n");
+        ESP_LOGI(BLUFI_TAG, "BLUFI ble disconnect");
         ble_is_connected = false;
         blufi_security_deinit();
         esp_blufi_adv_start();
         break;
     case ESP_BLUFI_EVENT_SET_WIFI_OPMODE:
-        ESP_LOGI(BLUFI_TAG, "BLUFI Set WIFI opmode %d\n", param->wifi_mode.op_mode);
+        ESP_LOGI(BLUFI_TAG, "BLUFI Set WIFI opmode %d", param->wifi_mode.op_mode);
         ESP_ERROR_CHECK( esp_wifi_set_mode(param->wifi_mode.op_mode) );
         break;
     case ESP_BLUFI_EVENT_REQ_CONNECT_TO_AP:
-        ESP_LOGI(BLUFI_TAG, "BLUFI request wifi connect to AP\n");
+        ESP_LOGI(BLUFI_TAG, "BLUFI request wifi connect to AP");
         /* there is no wifi callback when the device has already connected to this wifi
         so disconnect wifi before connection.
         */
@@ -520,11 +562,11 @@ static void blufi_event_callback(esp_blufi_cb_event_t event, esp_blufi_cb_param_
         esp_wifi_connect();
         break;
     case ESP_BLUFI_EVENT_REQ_DISCONNECT_FROM_AP:
-        ESP_LOGI(BLUFI_TAG, "BLUFI requset wifi disconnect from AP\n");
+        ESP_LOGI(BLUFI_TAG, "BLUFI requset wifi disconnect from AP");
         esp_wifi_disconnect();
         break;
     case ESP_BLUFI_EVENT_REPORT_ERROR:
-        ESP_LOGE(BLUFI_TAG, "BLUFI report error, error code %d\n", param->report_error.state);
+        ESP_LOGE(BLUFI_TAG, "BLUFI report error, error code %d", param->report_error.state);
         esp_blufi_send_error_info(param->report_error.state);
         break;
     case ESP_BLUFI_EVENT_GET_WIFI_STATUS: {
@@ -543,7 +585,7 @@ static void blufi_event_callback(esp_blufi_cb_event_t event, esp_blufi_cb_param_
         } else {
             esp_blufi_send_wifi_conn_report(mode, ESP_BLUFI_STA_CONN_FAIL, 0, NULL);
         }
-        ESP_LOGI(BLUFI_TAG, "BLUFI get wifi status from AP\n");
+        ESP_LOGI(BLUFI_TAG, "BLUFI get wifi status from AP");
         break;
     }
     case ESP_BLUFI_EVENT_RECV_SLAVE_DISCONNECT_BLE:
@@ -557,19 +599,19 @@ static void blufi_event_callback(esp_blufi_cb_event_t event, esp_blufi_cb_param_
         memcpy(sta_config.sta.bssid, param->sta_bssid.bssid, 6);
         sta_config.sta.bssid_set = 1;
         esp_wifi_set_config(WIFI_IF_STA, &sta_config);
-        ESP_LOGI(BLUFI_TAG, "Recv STA BSSID %s\n", sta_config.sta.ssid);
+        ESP_LOGI(BLUFI_TAG, "Recv STA BSSID %s", sta_config.sta.ssid);
         break;
 	case ESP_BLUFI_EVENT_RECV_STA_SSID:
         strncpy((char *)sta_config.sta.ssid, (char *)param->sta_ssid.ssid, param->sta_ssid.ssid_len);
         sta_config.sta.ssid[param->sta_ssid.ssid_len] = '\0';
         esp_wifi_set_config(WIFI_IF_STA, &sta_config);
-        ESP_LOGI(BLUFI_TAG, "Recv STA SSID %s\n", sta_config.sta.ssid);
+        ESP_LOGI(BLUFI_TAG, "Recv STA SSID %s", sta_config.sta.ssid);
         break;
 	case ESP_BLUFI_EVENT_RECV_STA_PASSWD:
         strncpy((char *)sta_config.sta.password, (char *)param->sta_passwd.passwd, param->sta_passwd.passwd_len);
         sta_config.sta.password[param->sta_passwd.passwd_len] = '\0';
         esp_wifi_set_config(WIFI_IF_STA, &sta_config);
-        ESP_LOGI(BLUFI_TAG, "Recv STA PASSWORD %s\n", sta_config.sta.password);
+        ESP_LOGI(BLUFI_TAG, "Recv STA PASSWORD %s", sta_config.sta.password);
         break;
 	case ESP_BLUFI_EVENT_RECV_SOFTAP_SSID:
 	case ESP_BLUFI_EVENT_RECV_SOFTAP_PASSWD:
@@ -589,26 +631,26 @@ static void blufi_event_callback(esp_blufi_cb_event_t event, esp_blufi_cb_param_
         break;
     }
     case ESP_BLUFI_EVENT_RECV_CUSTOM_DATA:
-        ESP_LOGI(BLUFI_TAG, "Recv Custom Data %d\n", param->custom_data.data_len);
+        ESP_LOGI(BLUFI_TAG, "Recv Custom Data %d", param->custom_data.data_len);
         esp_log_buffer_hex("Custom Data", param->custom_data.data, param->custom_data.data_len);
+        if (strncmp(RESETCMD, (const char*)param->custom_data.data, param->custom_data.data_len) == 0)
+        {
+            ESP_LOGI(TAG, "Reset requested");
+            // Clean up and restart
+            esp_blufi_disconnect();
+            wifi_disable();
+            wifi_disconnect();
+            ESP_LOGI(TAG, "RESTARTING!!");
+            esp_restart();
+        }
         break;
 	case ESP_BLUFI_EVENT_RECV_USERNAME:
-        /* Not handle currently */
-        break;
 	case ESP_BLUFI_EVENT_RECV_CA_CERT:
-        /* Not handle currently */
-        break;
 	case ESP_BLUFI_EVENT_RECV_CLIENT_CERT:
-        /* Not handle currently */
-        break;
 	case ESP_BLUFI_EVENT_RECV_SERVER_CERT:
-        /* Not handle currently */
-        break;
 	case ESP_BLUFI_EVENT_RECV_CLIENT_PRIV_KEY:
-        /* Not handle currently */
-        break;;
 	case ESP_BLUFI_EVENT_RECV_SERVER_PRIV_KEY:
-        /* Not handle currently */
+        // Ignore these events
         break;
     default:
         break;

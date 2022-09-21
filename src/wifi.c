@@ -54,12 +54,13 @@ static void (*led_connected_callback)() = NULL;
 static void (*led_disconnected_callback)() = NULL;
 
 static const char *TAG = "WIFICTRL";
-static const char *RESETCMD = "reset";
 
 static bool wifi_enabled = true;
 
 #ifdef CONFIG_ESP_BLUFI_ENABLED
 static const char *BLUFI_TAG = "BLUFI";
+
+static void (*custom_command_callback)(const char*) = NULL;
 
 /* store the station info for send back to phone */
 static bool gl_sta_connected = false;
@@ -69,6 +70,16 @@ static uint8_t gl_sta_ssid[32];
 static int gl_sta_ssid_len;
 
 static void blufi_event_callback(esp_blufi_cb_event_t event, esp_blufi_cb_param_t *param);
+
+void set_custom_command_callback(void (*callback)(const char*))
+{
+    if (callback!=NULL)
+    {
+        custom_command_callback = callback;
+    }
+}
+
+
 #endif
 
 #ifdef CONFIG_ESP_WIFI_REBOOT_ENABLED
@@ -303,7 +314,7 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base,
                         esp_blufi_send_wifi_conn_report(mode, ESP_BLUFI_STA_CONN_FAIL, 0, NULL);
                     }
                 } else {
-                    ESP_LOGI(BLUFI_TAG, "BLUFI BLE is not connected yet\n");
+                    ESP_LOGI(BLUFI_TAG, "BLUFI BLE is not connected yet");
                 }
                 break;
             }
@@ -483,6 +494,17 @@ void wifi_connect(void)
 }
 
 #ifdef CONFIG_ESP_BLUFI_ENABLED
+static bluficmd_t **blufi_commands = NULL;
+static int command_count = 0;
+
+void register_command_set(bluficmd_t *commands[], int count)
+{
+    blufi_commands = commands;
+    command_count = count;
+    for (int i=0; i<count; i++) {
+        ESP_LOGI(TAG, "Registered CMD: %s", blufi_commands[i]->command);
+    }
+}
 
 #ifdef CONFIG_BT_DEVICE_NAME
 // Unfortunately, the Espressif BluFi code hard codes the Bluetooth name for the device into the
@@ -515,14 +537,8 @@ static esp_ble_adv_data_t blufi_adv_data = {
 
 #endif
 
-static void blufi_event_callback(esp_blufi_cb_event_t event, esp_blufi_cb_param_t *param)
+static void bt_advertise() 
 {
-    /* actually, should post to blufi_task handle the procedure,
-     * now, as a example, we do it more simply */
-    switch (event) {
-    case ESP_BLUFI_EVENT_INIT_FINISH:
-        ESP_LOGI(BLUFI_TAG, "BLUFI init finish");
-
 #ifdef CONFIG_BT_DEVICE_NAME
         // Overwrite the BT name set in esp_blufi_adv_start
         ESP_LOGI(BLUFI_TAG, "Bluetooth device name set to %s", CONFIG_BT_DEVICE_NAME);
@@ -533,6 +549,16 @@ static void blufi_event_callback(esp_blufi_cb_event_t event, esp_blufi_cb_param_
         // If the name if not defined, use the default init code and name
         esp_blufi_adv_start();
 #endif        
+}
+
+static void blufi_event_callback(esp_blufi_cb_event_t event, esp_blufi_cb_param_t *param)
+{
+    /* actually, should post to blufi_task handle the procedure,
+     * now, as a example, we do it more simply */
+    switch (event) {
+    case ESP_BLUFI_EVENT_INIT_FINISH:
+        ESP_LOGI(BLUFI_TAG, "BLUFI init finish");
+        bt_advertise();
         break;
     case ESP_BLUFI_EVENT_DEINIT_FINISH:
         ESP_LOGI(BLUFI_TAG, "BLUFI deinit finish");
@@ -547,7 +573,7 @@ static void blufi_event_callback(esp_blufi_cb_event_t event, esp_blufi_cb_param_
         ESP_LOGI(BLUFI_TAG, "BLUFI ble disconnect");
         ble_is_connected = false;
         blufi_security_deinit();
-        esp_blufi_adv_start();
+        bt_advertise();
         break;
     case ESP_BLUFI_EVENT_SET_WIFI_OPMODE:
         ESP_LOGI(BLUFI_TAG, "BLUFI Set WIFI opmode %d", param->wifi_mode.op_mode);
@@ -630,20 +656,21 @@ static void blufi_event_callback(esp_blufi_cb_event_t event, esp_blufi_cb_param_
         esp_wifi_scan_start(&scanConf, true);
         break;
     }
-    case ESP_BLUFI_EVENT_RECV_CUSTOM_DATA:
-        ESP_LOGI(BLUFI_TAG, "Recv Custom Data %d", param->custom_data.data_len);
+    case ESP_BLUFI_EVENT_RECV_CUSTOM_DATA:{
         esp_log_buffer_hex("Custom Data", param->custom_data.data, param->custom_data.data_len);
-        if (strncmp(RESETCMD, (const char*)param->custom_data.data, param->custom_data.data_len) == 0)
+        char *buffer = (char*)param->custom_data.data;
+        buffer[param->custom_data.data_len] = '\0';
+        if (custom_command_callback==NULL)
         {
-            ESP_LOGI(TAG, "Reset requested");
-            // Clean up and restart
-            esp_blufi_disconnect();
-            wifi_disable();
-            wifi_disconnect();
-            ESP_LOGI(TAG, "RESTARTING!!");
-            esp_restart();
+            ESP_LOGI(TAG, "Ignoring custom cmd: %s", buffer);
+        }
+        else
+        {
+            ESP_LOGI(TAG, "Processing Custom cmd: %s", buffer);
+            custom_command_callback(buffer);
         }
         break;
+    }
 	case ESP_BLUFI_EVENT_RECV_USERNAME:
 	case ESP_BLUFI_EVENT_RECV_CA_CERT:
 	case ESP_BLUFI_EVENT_RECV_CLIENT_CERT:

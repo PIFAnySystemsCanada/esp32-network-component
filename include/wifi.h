@@ -20,6 +20,19 @@
 extern "C" {
 #endif
 
+#ifdef CONFIG_ESP_BLUFI_ENABLED    
+
+/**
+ * @brief BluFi offers custom text, and we use it for commands
+ * Struct holds the command text and the callback to call for the command
+ */
+typedef struct bluficmd {
+    const char* command;
+    void (*cmd_callback)();
+} bluficmd_t;
+
+#endif
+
 /**
  * @brief Sets up the wifi API and must be called once and only once per application. Typically called
  * in the app_main function and must be called before calling wifi_connect.
@@ -69,6 +82,16 @@ void set_wifi_led_connected_callback(void (*callback)());
 
 void set_wifi_led_disconnected_callback(void (*callback)());
 
+/**
+ * @brief Register a blufi command set
+ */
+#ifdef CONFIG_ESP_BLUFI_ENABLED
+/**
+ * @brief Registers a custom data/command handler for blufi custom data. The intend is to process
+ * commands from the custom data received from blufi for reboot, etc.
+ */
+void set_custom_command_callback(void (*callback)(const char*));
+#endif
 
 #ifdef __cplusplus
 }

@@ -30,6 +30,12 @@ menu "WIFI Configuration"
                 default 1
                 help
                     Enable Bluetooth in the build. Required for BluFi to work.
+            config BT_BLE_BLUFI_ENABLE
+                bool "Enable BluFi (REQUIRED FOR BLUFI)"
+                default 1
+                help
+                    Enable BlueFi in the build. Required for BluFi to work.
+
             config BT_DEVICE_NAME
                 string "Bluetooth Device Name"
                 default "ESP32GarageDoor"

@@ -2,8 +2,7 @@
 
 ## What is it?
 
-This is a component for the ESP-IDF 4.1 or better.  It is intended for IOT situations were devices are tested in a lab first, and then deployed to the field. This module provides both
-ethernet and wifi functionality. The module is designed to work where the WIFI connection is unstable.
+This is a component for the ESP-IDF 4.x.  5.x is not yet supported. It is intended for IOT situations were devices are tested in a lab first, and then deployed to the field. This module provides both ethernet and wifi functionality. The module is designed to work where the WIFI connection is unstable.
 
 The WIFI driver supports the following features:
 
